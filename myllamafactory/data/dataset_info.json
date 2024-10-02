@@ -1,0 +1,16 @@
+{
+  "example_data": {
+    "file_name": "../../example_online.json",
+    "formatting": "alpaca",
+    "columns": {
+      "prompt": "instruction",
+      "system": "system",
+      "raw": "raw",
+      "chosen": "chosen",
+      "rejected": "rejected",
+      "p_system": "p_system",
+      "n_system": "n_system"
+    },
+    "ranking": true
+  }
+}

@@ -1,0 +1,13 @@
+.vscode
+.git
+.github
+.venv
+cache
+data
+hf_cache
+output
+examples
+.dockerignore
+.gitattributes
+.gitignore
+Dockerfile
