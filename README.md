@@ -49,6 +49,21 @@ As the policy model strengthens, it becomes increasingly adept at generating acc
 
 *Figure: The philosophical motivation of our methods. Greater overlap on the x-axis (performance) between the generated distributions (red and blue) and the original distribution (orange) indicates stronger on-policy behavior. Previous automated methods extract chosen and rejected distributions through different methods, which may be less learnable for the policy model and hard to distinguish after iterative training. Our approach (SSO) optimizes models to generate near-on-policy signals where there remains a gap between chosen and rejected distributions, which benefits the automated alignment process.*
 
+## Training
+```bash
+cd myllamafactory
+bash train_multinode.sh \
+    meta-llama/Llama-3.1-8B-Instruct (your path to save the model) \
+    example_data (your dataset, define at myllamafactory/data/dataset_info.json) \
+    5e-7 (learning rate) \ 
+    ipo (base loss) \
+    1 (batch size per GPU) \
+    16 (accumulation steps) \
+    True (use W function) \
+    True (use G function) \
+    0.1 (the beta of G function) \
+    0.2 (the beta of base loss)
+```
 
 ## (To be completed)
 We will provide other details, such as installation instructions, usage, and more in the near future. Including:

@@ -5,7 +5,6 @@ export lr=$3
 export loss=$4
 export batch=$5
 export accumulation=$8
-
 export have_w=$6
 export have_G=$7
 export G_beta=$9
@@ -64,7 +63,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.run \
     --plot_loss \
     --pref_beta ${pref_beta} \
     --have_w ${have_w} \
-    --p_x 0.66 \
+    --p_x 0.6 \
     --have_extra ${have_G} \
     --pref_dgx ${G_beta} \
     --bf16 True
