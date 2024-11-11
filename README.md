@@ -52,6 +52,7 @@ As the policy model strengthens, it becomes increasingly adept at generating acc
 ## (To be completed, before 11/20)
 We will provide other details, such as installation instructions, usage, and more in the near future. Including:
 - **Code**: Implementation of the Self-Steering Optimization algorithm.
+- **Augment pipline**: Implementation of the Augment pipline of the Self-Steering Optimization, including a principle-generator, a query-augment, and a preference-fiter.
 - **Data**: Part of processed datasets used for training and evaluation.
 - **Scripts**: Scripts for running experiments and evaluations.
 

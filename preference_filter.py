@@ -81,14 +81,6 @@ def get_ppl_score(datas):
     return datas
 
 def filter(rawdatas):
-    """
-    o_chosen_ppl: 在原始instruction引导下生成chosen的概率
-    o_rejected_ppl: 在原始instruction引导下生成rejected的概率
-    p_chosen_ppl: 在positive instruction引导下生成chosen的概率
-    p_rejected_ppl: 在positive instruction引导下生成rejected的概率
-    n_chosen_ppl: 在negative instruction引导下生成chosen的概率
-    n_rejected_ppl: 在negative instruction引导下生成rejected的概率
-    """
     datas = get_ppl_score(rawdatas)
     filtered_datas = []
 
@@ -111,16 +103,8 @@ def filter(rawdatas):
 
 
 if __name__ == '__main__':
-    """
-    data_format:
-    system: 原始系统指令
-    instruction: 用户指令
-    p
-    chosen: 选择的响应
-    rejected: 拒绝的响应
-    """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--datapath', type=str, help='评价数据位置')
+    parser.add_argument('--datapath', type=str)
     parser.add_argument('--model', type=str)
     parser.add_argument('--batch_size', type=int, default=16)
     args = parser.parse_args()

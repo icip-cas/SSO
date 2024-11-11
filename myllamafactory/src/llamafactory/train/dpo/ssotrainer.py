@@ -110,12 +110,10 @@ class MyCustomDPOTrainer(CustomDPOTrainer):
         if self.finetuning_args.use_ref_model:
             batch = {k: v.detach().clone() for k, v in batch.items()}  # avoid error
 
-        # 获取批次大小
         batch_size = batch["input_ids"].size(0)
         third_size = batch_size // 3
 
         if self.finetuning_args.G_function:
-            # 将 batch 分为三部分
             batch1 = {k: v[:third_size] for k, v in batch.items()}
             all_logits: "torch.Tensor" = model(**batch1, return_dict=True, use_cache=False).logits.to(torch.float32)
             all_logps, valid_length = get_batch_logps(logits=all_logits, labels=batch1["labels"])
@@ -159,7 +157,6 @@ class MyCustomDPOTrainer(CustomDPOTrainer):
             # p_p
             return chosen_logps, rejected_logps, chosen_logits, rejected_logits, policy_chosen_logps_avg, policy_rejected_logps_avg, p_chosen_logps, p_rejected_logps, p_chosen_logits, p_rejected_logits, p_policy_chosen_logps_avg, n_chosen_logps, n_rejected_logps, n_chosen_logits, n_rejected_logits, n_policy_chosen_logps_avg
         else:
-            # 将 batch 分为三部分
             batch1 = {k: v[:third_size] for k, v in batch.items()}
             all_logits: "torch.Tensor" = model(**batch1, return_dict=True, use_cache=False).logits.to(torch.float32)
             all_logps, valid_length = get_batch_logps(logits=all_logits, labels=batch1["labels"])
