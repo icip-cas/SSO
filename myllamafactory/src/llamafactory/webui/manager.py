@@ -29,7 +29,7 @@ class Manager:
         Adds elements to manager.
         """
         for elem_name, elem in elem_dict.items():
-            elem_id = "{}.{}".format(tab_name, elem_name)
+            elem_id = f"{tab_name}.{elem_name}"
             self._id_to_elem[elem_id] = elem
             self._elem_to_id[elem] = elem_id
 
@@ -71,8 +71,8 @@ class Manager:
             self._id_to_elem["top.finetuning_type"],
             self._id_to_elem["top.checkpoint_path"],
             self._id_to_elem["top.quantization_bit"],
+            self._id_to_elem["top.quantization_method"],
             self._id_to_elem["top.template"],
             self._id_to_elem["top.rope_scaling"],
             self._id_to_elem["top.booster"],
-            self._id_to_elem["top.visual_inputs"],
         }

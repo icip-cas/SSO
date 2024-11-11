@@ -52,17 +52,15 @@ As the policy model strengthens, it becomes increasingly adept at generating acc
 ## Training
 ```bash
 cd myllamafactory
-bash train_multinode.sh \
+bash train.sh \
     meta-llama/Llama-3.1-8B-Instruct (your path to save the model) \
     example_data (your dataset, define at myllamafactory/data/dataset_info.json) \
     5e-7 (learning rate) \ 
     ipo (base loss) \
     1 (batch size per GPU) \
     16 (accumulation steps) \
-    True (use W function) \
-    True (use G function) \
-    0.1 (the beta of G function) \
-    0.2 (the beta of base loss)
+    Llama-3.1-SSO (your output dir name)
+
 ```
 
 ## (To be completed)

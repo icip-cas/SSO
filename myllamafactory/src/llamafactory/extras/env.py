@@ -1,4 +1,7 @@
-# Copyright 2024 the LlamaFactory team.
+# Copyright 2024 HuggingFace Inc. and the LlamaFactory team.
+#
+# This code is inspired by the HuggingFace's transformers library.
+# https://github.com/huggingface/transformers/blob/v4.40.0/src/transformers/commands/env.py
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +26,7 @@ import trl
 from transformers.utils import is_torch_cuda_available, is_torch_npu_available
 
 
-VERSION = "0.8.3.dev0"
+VERSION = "0.9.1.dev0"
 
 
 def print_env() -> None:
@@ -69,4 +72,4 @@ def print_env() -> None:
     except Exception:
         pass
 
-    print("\n" + "\n".join(["- {}: {}".format(key, value) for key, value in info.items()]) + "\n")
+    print("\n" + "\n".join([f"- {key}: {value}" for key, value in info.items()]) + "\n")

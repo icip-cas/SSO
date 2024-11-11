@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .collator import KTODataCollatorWithPadding, PairwiseDataCollatorWithPadding
+from .collator import (
+    KTODataCollatorWithPadding,
+    MultiModalDataCollatorForSeq2Seq,
+    PairwiseDataCollatorWithPadding,
+    SSODataCollatorWithPadding,
+    SFTDataCollatorWith4DAttentionMask,
+)
 from .data_utils import Role, split_dataset
 from .loader import get_dataset
 from .template import TEMPLATES, Template, get_template_and_fix_tokenizer
@@ -20,7 +26,10 @@ from .template import TEMPLATES, Template, get_template_and_fix_tokenizer
 
 __all__ = [
     "KTODataCollatorWithPadding",
+    "MultiModalDataCollatorForSeq2Seq",
+    "SSODataCollatorWithPadding",
     "PairwiseDataCollatorWithPadding",
+    "SFTDataCollatorWith4DAttentionMask",
     "Role",
     "split_dataset",
     "get_dataset",

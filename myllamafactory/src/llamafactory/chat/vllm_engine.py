@@ -13,15 +13,24 @@
 # limitations under the License.
 
 import uuid
-from typing import TYPE_CHECKING, AsyncGenerator, AsyncIterator, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, AsyncIterator, Dict, List, Optional, Sequence, Union
+
+from typing_extensions import override
 
 from ..data import get_template_and_fix_tokenizer
-from ..extras.logging import get_logger
+from ..extras import logging
+from ..extras.constants import IMAGE_PLACEHOLDER
 from ..extras.misc import get_device_count
-from ..extras.packages import is_vllm_available, is_vllm_version_greater_than_0_5
+from ..extras.packages import is_pillow_available, is_vllm_available
 from ..model import load_config, load_tokenizer
+from ..model.model_utils.quantization import QuantizationMethod
 from ..model.model_utils.visual import LlavaMultiModalProjectorForYiVLForVLLM
 from .base_engine import BaseEngine, Response
+
+
+if is_pillow_available():
+    from PIL import Image
+    from PIL.Image import Image as ImageObject
 
 
 if is_vllm_available():
@@ -29,15 +38,12 @@ if is_vllm_available():
     from vllm.lora.request import LoRARequest
 
 
-
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
-    from transformers.image_processing_utils import BaseImageProcessor
-
+    from ..data.mm_plugin import ImageInput, VideoInput
     from ..hparams import DataArguments, FinetuningArguments, GeneratingArguments, ModelArguments
 
 
-logger = get_logger(__name__)
+logger = logging.get_logger(__name__)
 
 
 class VllmEngine(BaseEngine):
@@ -49,13 +55,18 @@ class VllmEngine(BaseEngine):
         generating_args: "GeneratingArguments",
     ) -> None:
         config = load_config(model_args)  # may download model from ms hub
+        if getattr(config, "quantization_config", None):  # gptq models should use float16
+            quantization_config: Dict[str, Any] = getattr(config, "quantization_config", None)
+            quant_method = quantization_config.get("quant_method", "")
+            if quant_method == QuantizationMethod.GPTQ and model_args.infer_dtype == "auto":
+                model_args.infer_dtype = "float16"
 
         self.can_generate = finetuning_args.stage == "sft"
         tokenizer_module = load_tokenizer(model_args)
         self.tokenizer = tokenizer_module["tokenizer"]
         self.processor = tokenizer_module["processor"]
         self.tokenizer.padding_side = "left"
-        self.template = get_template_and_fix_tokenizer(self.tokenizer, data_args.template)
+        self.template = get_template_and_fix_tokenizer(self.tokenizer, data_args)
         self.generating_args = generating_args.to_dict()
 
         engine_args = {
@@ -73,19 +84,11 @@ class VllmEngine(BaseEngine):
             "max_lora_rank": model_args.vllm_max_lora_rank,
         }
 
-        if model_args.visual_inputs:
-            image_size = config.vision_config.image_size
-            patch_size = config.vision_config.patch_size
-            self.image_feature_size = (image_size // patch_size) ** 2
-            engine_args["image_input_type"] = "pixel_values"
-            engine_args["image_token_id"] = self.tokenizer.convert_tokens_to_ids(self.template.image_token)
-            engine_args["image_input_shape"] = "1,3,{},{}".format(image_size, image_size)
-            engine_args["image_feature_size"] = self.image_feature_size
-            if getattr(config, "is_yi_vl_derived_model", None):
-                import vllm.model_executor.models.llava
+        if getattr(config, "is_yi_vl_derived_model", None):
+            import vllm.model_executor.models.llava
 
-                logger.info("Detected Yi-VL model, applying projector patch.")
-                vllm.model_executor.models.llava.LlavaMultiModalProjector = LlavaMultiModalProjectorForYiVLForVLLM
+            logger.info_rank0("Detected Yi-VL model, applying projector patch.")
+            vllm.model_executor.models.llava.LlavaMultiModalProjector = LlavaMultiModalProjectorForYiVLForVLLM
 
         self.model = AsyncLLMEngine.from_engine_args(AsyncEngineArgs(**engine_args))
         if model_args.adapter_name_or_path is not None:
@@ -98,27 +101,18 @@ class VllmEngine(BaseEngine):
         messages: Sequence[Dict[str, str]],
         system: Optional[str] = None,
         tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
+        images: Optional[Sequence["ImageInput"]] = None,
+        videos: Optional[Sequence["VideoInput"]] = None,
         **input_kwargs,
     ) -> AsyncIterator["RequestOutput"]:
-        request_id = "chatcmpl-{}".format(uuid.uuid4().hex)
-
-        if (
-            self.processor is not None
-            and image is not None
-            and not hasattr(self.processor, "image_seq_length")
-            and self.template.image_token not in messages[0]["content"]
-        ):  # llava-like models (TODO: paligemma models)
-            messages[0]["content"] = self.template.image_token * self.image_feature_size + messages[0]["content"]
+        request_id = f"chatcmpl-{uuid.uuid4().hex}"
+        if images is not None:
+            if not any(IMAGE_PLACEHOLDER in message["content"] for message in messages):
+                messages[0]["content"] = IMAGE_PLACEHOLDER * len(images) + messages[0]["content"]
 
         paired_messages = messages + [{"role": "assistant", "content": ""}]
         system = system or self.generating_args["default_system"]
-        prompt_ids, _ = self.template.encode_oneturn(
-            tokenizer=self.tokenizer, messages=paired_messages, system=system, tools=tools
-        )
-
-        multi_modal_data = None
-
+        prompt_ids, _ = self.template.encode_oneturn(self.tokenizer, paired_messages, system, tools)
         prompt_length = len(prompt_ids)
 
         use_beam_search: bool = self.generating_args["num_beams"] > 1
@@ -163,6 +157,21 @@ class VllmEngine(BaseEngine):
             skip_special_tokens=True,
         )
 
+        if images is not None:  # add image features
+            image_data = []
+            for image in images:
+                if not isinstance(image, (str, ImageObject)):
+                    raise ValueError(f"Expected image input is a path or PIL.Image, but got {type(image)}.")
+
+                if isinstance(image, str):
+                    image = Image.open(image).convert("RGB")
+
+                image_data.append(image)
+
+            multi_modal_data = {"image": image_data}
+        else:
+            multi_modal_data = None
+
         result_generator = self.model.generate(
             inputs={"prompt_token_ids": prompt_ids, "multi_modal_data": multi_modal_data},
             sampling_params=sampling_params,
@@ -171,16 +180,18 @@ class VllmEngine(BaseEngine):
         )
         return result_generator
 
+    @override
     async def chat(
         self,
         messages: Sequence[Dict[str, str]],
         system: Optional[str] = None,
         tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
+        images: Optional[Sequence["ImageInput"]] = None,
+        videos: Optional[Sequence["VideoInput"]] = None,
         **input_kwargs,
     ) -> List["Response"]:
         final_output = None
-        generator = await self._generate(messages, system, tools, image, **input_kwargs)
+        generator = await self._generate(messages, system, tools, images, videos, **input_kwargs)
         async for request_output in generator:
             final_output = request_output
 
@@ -197,21 +208,24 @@ class VllmEngine(BaseEngine):
 
         return results
 
+    @override
     async def stream_chat(
         self,
         messages: Sequence[Dict[str, str]],
         system: Optional[str] = None,
         tools: Optional[str] = None,
-        image: Optional["NDArray"] = None,
+        images: Optional[Sequence["ImageInput"]] = None,
+        videos: Optional[Sequence["VideoInput"]] = None,
         **input_kwargs,
     ) -> AsyncGenerator[str, None]:
         generated_text = ""
-        generator = await self._generate(messages, system, tools, image, **input_kwargs)
+        generator = await self._generate(messages, system, tools, images, videos, **input_kwargs)
         async for result in generator:
             delta_text = result.outputs[0].text[len(generated_text) :]
             generated_text = result.outputs[0].text
             yield delta_text
 
+    @override
     async def get_scores(
         self,
         batch_input: List[str],

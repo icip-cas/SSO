@@ -14,16 +14,14 @@
 
 import json
 import os
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Sequence, Tuple
-
-from numpy.typing import NDArray
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Sequence, Tuple
 
 from ..chat import ChatModel
 from ..data import Role
 from ..extras.constants import PEFT_METHODS
 from ..extras.misc import torch_gc
 from ..extras.packages import is_gradio_available
-from .common import get_save_dir
+from .common import QUANTIZATION_BITS, get_save_dir
 from .locales import ALERTS
 
 
@@ -76,15 +74,20 @@ class WebChatModel(ChatModel):
             yield error
             return
 
+        if get("top.quantization_bit") in QUANTIZATION_BITS:
+            quantization_bit = int(get("top.quantization_bit"))
+        else:
+            quantization_bit = None
+
         yield ALERTS["info_loading"][lang]
         args = dict(
             model_name_or_path=model_path,
             finetuning_type=finetuning_type,
-            quantization_bit=int(get("top.quantization_bit")) if get("top.quantization_bit") in ["8", "4"] else None,
+            quantization_bit=quantization_bit,
+            quantization_method=get("top.quantization_method"),
             template=get("top.template"),
             flash_attn="fa2" if get("top.booster") == "flashattn2" else "auto",
             use_unsloth=(get("top.booster") == "unsloth"),
-            visual_inputs=get("top.visual_inputs"),
             rope_scaling=get("top.rope_scaling") if get("top.rope_scaling") in ["linear", "dynamic"] else None,
             infer_backend=get("infer.infer_backend"),
             infer_dtype=get("infer.infer_dtype"),
@@ -129,7 +132,8 @@ class WebChatModel(ChatModel):
         messages: Sequence[Dict[str, str]],
         system: str,
         tools: str,
-        image: Optional[NDArray],
+        image: Optional[Any],
+        video: Optional[Any],
         max_new_tokens: int,
         top_p: float,
         temperature: float,
@@ -137,7 +141,14 @@ class WebChatModel(ChatModel):
         chatbot[-1][1] = ""
         response = ""
         for new_text in self.stream_chat(
-            messages, system, tools, image, max_new_tokens=max_new_tokens, top_p=top_p, temperature=temperature
+            messages,
+            system,
+            tools,
+            images=[image] if image else None,
+            videos=[video] if video else None,
+            max_new_tokens=max_new_tokens,
+            top_p=top_p,
+            temperature=temperature,
         ):
             response += new_text
             if tools:

@@ -1,7 +1,7 @@
 {
   "example_data": {
     "file_name": "../../example_online.json",
-    "formatting": "alpaca",
+    "formatting": "sso",
     "columns": {
       "prompt": "instruction",
       "system": "system",

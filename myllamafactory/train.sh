@@ -4,22 +4,24 @@ export dataset=$2
 export lr=$3
 export loss=$4
 export batch=$5
-export accumulation=$8
-export have_w=$6
-export have_G=$7
-export G_beta=$9
-export pref_beta=${10}
+export accumulation=$6
+export output=$7
+export pref_beta=0.2
+export SSO=True
+export W_function=True
+export W_alpha=0.66
+export G_fuction=True
+export G_beta=0.1
 
 if [[ "${modelpath,,}" == *"qwen"* ]]; then
-    export model_name="qwen"
+    export template="qwen"
 elif [[ "${modelpath,,}" == *"glm"* ]]; then
-    export model_name="glm"
+    export template="glm"
 elif [[ "${modelpath,,}" == *"mistral"* ]]; then
-    export model_name="mistral"
+    export template="mistral"
 elif [[ "${modelpath,,}" == *"llama"* ]]; then
-    export model_name="llama3"
+    export template="llama3"
 fi
-# sigmoid,hinge,ipo,kto_pair
 
 DISTRIBUTED_ARGS="--nproc_per_node ${KUBERNETES_CONTAINER_RESOURCE_GPU} \
                     --nnodes ${WORLD_SIZE} \
@@ -30,16 +32,22 @@ DISTRIBUTED_ARGS="--nproc_per_node ${KUBERNETES_CONTAINER_RESOURCE_GPU} \
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.run \
     $DISTRIBUTED_ARGS \
     src/train.py \
-    --deepspeed ds_z3_config.json \
+    --deepspeed ds_z2_config.json \
     --flash_attn auto \
     --stage dpo \
     --pref_loss $loss \
+    --pref_beta ${pref_beta} \
+    --SSO $SSO \
+    --W_function $W_function \
+    --W_alpha $W_alpha \
+    --G_function $G_fuction \
+    --G_beta $G_beta \
     --do_train \
     --model_name_or_path $modelpath \
     --dataset $dataset \
-    --template $model_name \
+    --template $template \
     --finetuning_type full \
-    --output_dir output/${data}-${loss}-${lr}-G_${have_extra}-W_${have_w}-G_beta_${G_beta}-pref_beta_${pref_beta} \
+    --output_dir output/$output \
     --overwrite_cache \
     --overwrite_output_dir \
     --cutoff_len 2048 \
@@ -61,9 +69,4 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.run \
     --eval_strategy steps \
     --ddp_timeout 180000000 \
     --plot_loss \
-    --pref_beta ${pref_beta} \
-    --have_w ${have_w} \
-    --p_x 0.6 \
-    --have_extra ${have_G} \
-    --pref_dgx ${G_beta} \
     --bf16 True
