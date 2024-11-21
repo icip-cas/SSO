@@ -49,7 +49,7 @@ As the policy model strengthens, it becomes increasingly adept at generating acc
 
 *Figure: The philosophical motivation of our methods. Greater overlap on the x-axis (performance) between the generated distributions (red and blue) and the original distribution (orange) indicates stronger on-policy behavior. Previous automated methods extract chosen and rejected distributions through different methods, which may be less learnable for the policy model and hard to distinguish after iterative training. Our approach (SSO) optimizes models to generate near-on-policy signals where there remains a gap between chosen and rejected distributions, which benefits the automated alignment process.*
 
-## (To be completed, before 11/20)
+## (To be completed soon)
 We will provide other details, such as installation instructions, usage, and more in the near future. Including:
 - **Code**: Implementation of the Self-Steering Optimization algorithm.
 - **Augment pipline**: Implementation of the Augment pipline of the Self-Steering Optimization, including a principle-generator, a query-augment, and a preference-fiter.
